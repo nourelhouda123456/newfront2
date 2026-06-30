@@ -5,12 +5,22 @@
     <div class="kanban-header">
       <div class="kanban-title-block">
         <h1 class="kanban-title">{{ auth.isAdmin ? 'Toutes les tâches' : 'Mes tâches' }}</h1>
+        <div class="project-filter-wrap">
+          <span class="filter-label">Projet :</span>
+          <select v-model="selectedProjectId" class="project-select-filter">
+            <option :value="null">Tous les projets</option>
+            <option v-for="proj in projectsStore.projects" :key="proj.id" :value="proj.id">
+              {{ proj.name }}
+            </option>
+          </select>
+        </div>
         <div class="kanban-counts">
           <span v-for="col in columns" :key="col.status" class="kcount" :class="col.status">
             {{ tasksByStatus(col.status).length }}
           </span>
         </div>
       </div>
+      <!-- L'action de créer des tâches est accessible pour l'utilisateur et l'admin -->
       <button class="btn btn-primary" @click="openModal()">+ Nouvelle tâche</button>
     </div>
 
@@ -37,6 +47,7 @@
             <span class="col-label">{{ col.label }}</span>
             <span class="col-badge">{{ tasksByStatus(col.status).length }}</span>
           </div>
+          <!-- L'action de créer des tâches est accessible pour l'utilisateur et l'admin -->
           <button class="col-add-btn" @click="openModal(null, col.status)" title="Ajouter une tâche">+</button>
         </div>
 
@@ -55,19 +66,21 @@
             v-for="task in tasksByStatus(col.status)"
             :key="task._id || task.id"
             class="task-card"
-            :class="[`priority-${task.priority}`, { dragging: draggingId === (task._id || task.id) }]"
-            :draggable="isTaskEditable(task)"
+            :class="[`priority-${task.priority}`, { dragging: draggingId === (task._id || task.id), 'task-locked': isTaskLocked(task) }]"
+            :draggable="isTaskDraggable(task)"
             @dragstart="onDragStart(task)"
             @dragend="onDragEnd"
           >
-            <!-- Drag handle -->
-            <div v-if="isTaskEditable(task)" class="drag-handle" title="Glisser">⠿</div>
+            <!-- Drag handle (uniquement si draggable) -->
+            <div v-if="isTaskDraggable(task)" class="drag-handle" title="Glisser">⢿</div>
+            <!-- Icône verrou pour les tâches terminées (non-admin) -->
+            <div v-if="isTaskLocked(task)" class="lock-badge" title="Terminée — seul l'admin peut modifier">🔒</div>
 
             <!-- Visibilité & Commentaires -->
             <div class="card-meta-top">
               <div style="display: flex; gap: 4px; align-items: center;">
                 <span class="vis-tag" :class="task.visibility">
-                  {{ task.visibility === 'public' ? ' Publique' : ' Privée' }}
+                  {{ task.visibility === 'public' ? '🌐 Publique' : '🔒 Privée' }}
                 </span>
                 <span v-if="task.comments?.length" class="vis-tag" style="background: #e0f2fe; color: #0369a1; padding: 2px 6px;">
                    {{ task.comments.length }}
@@ -95,9 +108,9 @@
             <div class="card-footer">
               <div class="card-dates">
                 <span class="card-date">📅 {{ formatDateTime(task.createdAt) }}</span>
-                <span v-if="task.closedAt" class="card-date card-closed"> {{ formatDateTime(task.closedAt) }}</span>
+                <span v-if="task.closedAt" class="card-date card-closed">✅ {{ formatDateTime(task.closedAt) }}</span>
               </div>
-              <div v-if="isTaskEditable(task)" class="card-actions">
+              <div v-if="canEditTask(task)" class="card-actions">
                 <button class="icon-btn" @click="openModal(task)" title="Modifier">✎</button>
                 <button v-if="isTaskDeletable(task)" class="icon-btn danger" @click="deleteTask(task._id || task.id)" title="Supprimer">✕</button>
               </div>
@@ -116,20 +129,34 @@
         </div>
 
         <div class="form-group">
+          <label>Projet *</label>
+          <select v-model="form.project" :disabled="!!editingTask">
+            <option :value="null" disabled>Sélectionner un projet</option>
+            <option v-for="proj in projectsStore.projects" :key="proj.id" :value="proj.id">
+              {{ proj.name }}
+            </option>
+          </select>
+          <span v-if="formError && !form.project" class="error-msg">Projet obligatoire</span>
+          <span v-if="!projectsStore.projects.length" class="error-msg">
+            ⚠️ Vous devez d'abord faire partie d'un projet pour créer une tâche.
+          </span>
+        </div>
+
+        <div class="form-group">
           <label>Titre *</label>
-          <input v-model="form.title" placeholder="Titre de la tâche" />
+          <input v-model="form.title" placeholder="Titre de la tâche" :disabled="!auth.isAdmin && !!editingTask" />
           <span v-if="formError && !form.title" class="error-msg">Champ obligatoire</span>
         </div>
 
         <div class="form-group">
           <label>Description</label>
-          <textarea v-model="form.description" rows="3" placeholder="Détails optionnels…"></textarea>
+          <textarea v-model="form.description" rows="3" placeholder="Détails optionnels…" :disabled="!auth.isAdmin && !!editingTask"></textarea>
         </div>
 
         <div class="form-row">
           <div class="form-group" style="flex:1">
             <label>Priorité</label>
-            <select v-model="form.priority">
+            <select v-model="form.priority" :disabled="!auth.isAdmin">
               <option value="low">🔵 Basse</option>
               <option value="medium">🟡 Moyenne</option>
               <option value="high">🔴 Haute</option>
@@ -137,16 +164,21 @@
           </div>
           <div class="form-group" style="flex:1">
             <label>Statut</label>
-            <select v-model="form.status">
+            <!-- User ne peut pas choisir 'done' s'il est déjà done. Admin peut tout -->
+            <select v-model="form.status" :disabled="isStatusSelectDisabled">
               <option value="todo">À faire</option>
               <option value="in_progress">En cours</option>
               <option value="blocked">🔴 Bloqué</option>
-              <option value="done">Terminé</option>
+              <option value="done" :disabled="!auth.isAdmin">Terminé {{ !auth.isAdmin ? '(admin only)' : '' }}</option>
             </select>
+            <span v-if="editingTask?.status === 'done' && !auth.isAdmin" class="locked-msg">
+              🔒 Cette tâche est terminée. Seul un administrateur peut la rouvrir.
+            </span>
           </div>
         </div>
 
-        <div class="form-group">
+        <!-- Visibilité — admin seulement -->
+        <div v-if="auth.isAdmin" class="form-group">
           <label>Visibilité</label>
           <div class="vis-toggle">
             <button
@@ -160,8 +192,8 @@
           </div>
         </div>
 
-        <!-- Assignee Selection -->
-        <div class="form-group" style="margin-top: 14px;">
+        <!-- Assignee Selection — admin seulement -->
+        <div v-if="auth.isAdmin" class="form-group" style="margin-top: 14px;">
           <label>Assigner à</label>
           <select v-model="form.assignee">       
             <option :value="null">Non assignée 👤</option>
@@ -169,6 +201,16 @@
               {{ user.name }} ({{ user.email }})
             </option>
           </select>
+        </div>
+
+        <!-- Assignee Selection — user simple (ne peut pas affecter aux autres) -->
+        <div v-else class="form-group" style="margin-top: 14px;">
+          <label>Assigné à</label>
+          <select v-model="form.assignee" :disabled="true">
+            <option :value="auth.currentUser?.id || auth.currentUser?._id">Moi-même ({{ auth.currentUser?.name }}) 👤</option>
+            <option :value="null">Non assignée 👤</option>
+          </select>
+          <span class="vis-hint" style="margin-top:2px;">Seul l'administrateur peut réassigner cette tâche à autrui.</span>
         </div>
 
         <!-- Comments Section -->
@@ -200,54 +242,52 @@
           </div>
         </div>
 
-        <!-- Timeline Section -->
-        <div v-if="editingTask" class="modal-timeline-section">
-          <h4 class="timeline-heading">⏱ Chronologie</h4>
-          <div class="timeline-track">
+          <!-- Timeline Section enrichie avec statusHistory -->
+          <div v-if="editingTask" class="modal-timeline-section">
+            <h4 class="timeline-heading">⏱ Historique des statuts</h4>
+            <div class="timeline-track">
 
-            <!-- Created -->
-            <div class="tl-item">
-              <div class="tl-dot created"></div>
-              <div class="tl-line"></div>
-              <div class="tl-content">
-                <span class="tl-label">Créée</span>
-                <span class="tl-time">{{ formatDateTime(editingTask.createdAt) }}</span>
+              <!-- Création -->
+              <div class="tl-item">
+                <div class="tl-dot created"></div>
+                <div class="tl-line"></div>
+                <div class="tl-content">
+                  <span class="tl-label">Créée</span>
+                  <span class="tl-time">{{ formatDateTime(editingTask.createdAt) }}</span>
+                </div>
               </div>
-            </div>
 
-            <!-- In progress -->
-            <div class="tl-item" :class="{ 'tl-inactive': editingTask.status === 'todo' }">
-              <div class="tl-dot in_progress"></div>
-              <div class="tl-line"></div>
-              <div class="tl-content">
-                <span class="tl-label">En cours</span>
-                <span class="tl-time" v-if="editingTask.status !== 'todo'">Statut actif</span>
-                <span class="tl-time" v-else style="color: var(--gray-3);">—</span>
+              <!-- Entrées de l'historique de statut -->
+              <div
+                v-for="(entry, idx) in editingTask.statusHistory"
+                :key="idx"
+                class="tl-item"
+              >
+                <div class="tl-dot" :class="entry.newStatus"></div>
+                <div v-if="idx < (editingTask.statusHistory?.length || 0) - 1" class="tl-line"></div>
+                <div class="tl-content">
+                  <span class="tl-label">
+                    {{ statusLabel(entry.newStatus) }}
+                    <span v-if="entry.note" class="tl-note">— {{ entry.note }}</span>
+                  </span>
+                  <span class="tl-time">
+                    {{ formatDateTime(entry.changedAt) }}
+                    <span v-if="entry.changedBy" class="tl-by"> par {{ entry.changedBy.name || entry.changedBy }}</span>
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <!-- Blocked (if applicable) -->
-            <div v-if="editingTask.status === 'blocked' || editingTask.closedAt" class="tl-item" :class="{ 'tl-inactive': editingTask.status === 'done' }">
-              <div class="tl-dot blocked"></div>
-              <div class="tl-line"></div>
-              <div class="tl-content">
-                <span class="tl-label">Bloquée</span>
-                <span class="tl-time" v-if="editingTask.status === 'blocked'">Actuellement bloquée</span>
-                <span class="tl-time" v-else style="color: var(--gray-5);">Avait été bloquée</span>
+              <!-- Statut actuel si l'historique est vide -->
+              <div v-if="!editingTask.statusHistory?.length" class="tl-item">
+                <div class="tl-dot" :class="editingTask.status"></div>
+                <div class="tl-content">
+                  <span class="tl-label">{{ statusLabel(editingTask.status) }}</span>
+                  <span class="tl-time">Statut actuel</span>
+                </div>
               </div>
-            </div>
 
-            <!-- Closed -->
-            <div class="tl-item" :class="{ 'tl-inactive': !editingTask.closedAt }">
-              <div class="tl-dot done" :class="{ 'tl-dot-pending': !editingTask.closedAt }"></div>
-              <div class="tl-content">
-                <span class="tl-label">Terminée</span>
-                <span class="tl-time" v-if="editingTask.closedAt">{{ formatDateTime(editingTask.closedAt) }}</span>
-               </div>
             </div>
-
           </div>
-        </div>
 
         <div class="modal-foot" style="margin-top: 16px;">
           <button class="btn btn-ghost" @click="closeModal">Annuler</button>
@@ -262,11 +302,17 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useTasksStore } from '../stores/tasks.js'
+import { useProjectsStore } from '../stores/projects.js'
 
-const auth       = useAuthStore()
-const tasksStore = useTasksStore()
+const auth          = useAuthStore()
+const tasksStore    = useTasksStore()
+const projectsStore = useProjectsStore()
+const route         = useRoute()
+
+const selectedProjectId = ref(null)
 
 // ── Colonnes ──────────────────────────────────────────────────────────────
 const columns = [
@@ -301,6 +347,8 @@ async function onDrop(newStatus) {
   const oldStatus = task.status
   if (oldStatus === newStatus) return
 
+ 
+
   // Optimistic update
   task.status = newStatus
 
@@ -321,7 +369,14 @@ function onDragEnd() {
 
 // ── Filtrage ──────────────────────────────────────────────────────────────
 function tasksByStatus(status) {
-  return tasksStore.tasks.filter(t => t.status === status)
+  let filtered = tasksStore.tasks.filter(t => t.status === status)
+  if (selectedProjectId.value) {
+    filtered = filtered.filter(t => {
+      const pId = t.project?.id || t.project?._id || t.project
+      return pId === selectedProjectId.value
+    })
+  }
+  return filtered
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────
@@ -329,7 +384,7 @@ const showModal   = ref(false)
 const editingTask = ref(null)
 const formError   = ref(false)
 const saving      = ref(false)
-const form        = reactive({ title: '', description: '', priority: 'medium', status: 'todo', visibility: 'private', assignee: null })
+const form        = reactive({ title: '', description: '', priority: 'medium', status: 'todo', visibility: 'private', assignee: null, project: null })
 
 const newCommentText = ref('')
 const commentSaving = ref(false)
@@ -345,9 +400,12 @@ function openModal(task = null, defaultStatus = 'todo') {
     form.status      = task.status
     form.visibility  = task.visibility || 'private'
     form.assignee    = task.assignee?.id || task.assignee?._id || task.assignee || null
+    form.project     = task.project?.id || task.project?._id || task.project || null
   } else {
     form.title = ''; form.description = ''
-    form.priority = 'medium'; form.status = defaultStatus; form.visibility = 'private'; form.assignee = null
+    form.priority = 'medium'; form.status = defaultStatus; form.visibility = 'private'
+    form.assignee = auth.isAdmin ? null : (auth.currentUser?.id || auth.currentUser?._id)
+    form.project  = selectedProjectId.value || (projectsStore.projects[0]?.id || null)
   }
   showModal.value = true
 }
@@ -356,7 +414,7 @@ function closeModal() { showModal.value = false; editingTask.value = null }
 
 async function submitForm() {
   formError.value = true
-  if (!form.title.trim()) return
+  if (!form.title.trim() || !form.project) return
   saving.value = true
   try {
     if (editingTask.value) {
@@ -371,6 +429,7 @@ async function submitForm() {
         title: form.title, description: form.description,
         priority: form.priority, status: form.status, visibility: form.visibility,
         assignee: form.assignee,
+        project: form.project,
       })
       showToast('Tâche créée', 'success')
     }
@@ -440,18 +499,48 @@ function showToast(msg, type = 'success') {
 // ── Helpers ───────────────────────────────────────────────────────────────
 const priorityLabel = p => ({ low: '🔵 Basse', medium: '🟡 Moyenne', high: '🔴 Haute' }[p])
 
-function isTaskEditable(task) {
-  const ownerId = task.owner?.id || task.owner?._id || task.owner
-  const assigneeId = task.assignee?.id || task.assignee?._id || task.assignee
+// ── Helpers de permission ─────────────────────────────────────────────────
+
+// Tâche verrouillée = done ET non-admin
+function isTaskLocked(task) {
+  return task.status === 'done' && !auth.isAdmin
+}
+
+// Draggable = admin toujours, user seulement si pas done et assignee
+function isTaskDraggable(task) {
+  if (auth.isAdmin) return true
+  if (task.status === 'done') return false
+  const assigneeId    = task.assignee?.id || task.assignee?._id || task.assignee
   const currentUserId = auth.currentUser?.id || auth.currentUser?._id
-  return auth.isAdmin || (ownerId && ownerId === currentUserId) || (assigneeId && assigneeId === currentUserId)
+  return assigneeId && assigneeId === currentUserId
+}
+
+// Peut ouvrir le panneau d'édition (modal)
+function canEditTask(task) {
+  if (auth.isAdmin) return true
+  // Un user peut ouvrir le modal d'une tâche qui lui est assignée (pour changer statut)
+  // mais pas si elle est done
+  if (task.status === 'done') return false
+  const assigneeId    = task.assignee?.id || task.assignee?._id || task.assignee
+  const currentUserId = auth.currentUser?.id || auth.currentUser?._id
+  return assigneeId && assigneeId === currentUserId
+}
+
+// isTaskEditable = règle ancienne, gardée pour compatibilité
+function isTaskEditable(task) {
+  return canEditTask(task)
 }
 
 function isTaskDeletable(task) {
-  const ownerId = task.owner?.id || task.owner?._id || task.owner
-  const currentUserId = auth.currentUser?.id || auth.currentUser?._id
-  return auth.isAdmin || (ownerId && ownerId === currentUserId)
+  return auth.isAdmin
 }
+
+// Le select de statut est disabled si :
+// - La tâche est done et l'user n'est pas admin
+const isStatusSelectDisabled = computed(() => {
+  if (!editingTask.value) return false
+  return editingTask.value.status === 'done' && !auth.isAdmin
+})
 
 function ownerInitials(owner) {
   if (!owner?.name) return '?'
@@ -471,10 +560,24 @@ function formatDateTime(iso) {
   })
 }
 
+const STATUS_LABELS = {
+  todo:        'À faire',
+  in_progress: 'En cours',
+  blocked:     'Bloqué',
+  done:        'Terminé',
+}
+function statusLabel(s) {
+  return STATUS_LABELS[s] || s
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 onMounted(() => {
   tasksStore.fetchTasks()
   auth.fetchUsers()
+  projectsStore.fetchProjects()
+  if (route.query.projectId) {
+    selectedProjectId.value = route.query.projectId
+  }
 })
 </script>
 
@@ -498,7 +601,33 @@ onMounted(() => {
   border-bottom: 1px solid var(--gray-3);
   flex-shrink: 0;
 }
-.kanban-title-block { display: flex; align-items: center; gap: 16px; }
+.kanban-title-block { display: flex; align-items: center; gap: 20px; }
+.project-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--gray-1);
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--gray-3);
+}
+.filter-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gray-5);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  user-select: none;
+}
+.project-select-filter {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-8);
+  outline: none;
+  cursor: pointer;
+}
 .kanban-title { font-size: 18px; font-weight: 700; }
 .kanban-counts { display: flex; gap: 6px; }
 .kcount {
@@ -627,6 +756,32 @@ onMounted(() => {
   cursor: grab;
 }
 .task-card:hover .drag-handle { color: var(--gray-5); }
+
+/* ── Tâche verrouillée (done, non-admin) ──────────────────────────────────── */
+.task-card.task-locked {
+  cursor: default;
+  opacity: .85;
+  border-left-color: #22c55e;
+  background: #f0fdf4;
+}
+.task-card.task-locked:hover { box-shadow: none; }
+
+.lock-badge {
+  position: absolute;
+  top: 8px; right: 10px;
+  font-size: 14px;
+  opacity: .6;
+}
+
+.locked-msg {
+  font-size: 11px;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 5px 8px;
+  border-radius: 6px;
+  display: block;
+  margin-top: 4px;
+}
 
 .card-meta-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 

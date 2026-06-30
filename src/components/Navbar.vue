@@ -6,11 +6,11 @@
       </router-link>
 
       <div class="nav-links">
-        <router-link to="/dashboard" class="nav-link">Tableau de bord</router-link>
-        <router-link to="/tasks"     class="nav-link">Mes tâches</router-link>
-        <router-link v-if="auth.isAdmin" to="/admin" class="nav-link nav-admin">
-          ⚙ Admin
-        </router-link>
+        <router-link to="/dashboard"  class="nav-link">Tableau de bord</router-link>
+        <router-link to="/projects"   class="nav-link">Projets</router-link>
+        <router-link to="/tasks"      class="nav-link">{{ auth.isAdmin ? 'Toutes les tâches' : 'Mes tâches' }}</router-link>
+        <router-link v-if="auth.isAdmin" to="/admin"      class="nav-link nav-admin">⚙ Admin</router-link>
+        <router-link v-if="auth.isAdmin" to="/admin/logs" class="nav-link nav-logs">📋 Journal</router-link>
       </div>
 
       <div class="nav-right">
@@ -40,7 +40,14 @@ const initials = computed(() => {
   return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 })
 
-function logout() {
+async function logout() {
+  // Appel API pour enregistrer la déconnexion dans les logs
+  try {
+    await fetch('http://localhost:3000/api/auth/logout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${auth.token}` },
+    })
+  } catch {}
   auth.logout()
   router.push('/login')
 }
@@ -69,6 +76,7 @@ function logout() {
   background: var(--gray-2); color: var(--gray-9);
 }
 .nav-admin.router-link-active { background: var(--blue-lt); color: var(--blue); }
+.nav-logs.router-link-active  { background: #f3e8ff; color: #7c3aed; }
 .nav-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .nav-user {
   display: flex; align-items: center; gap: 8px;
