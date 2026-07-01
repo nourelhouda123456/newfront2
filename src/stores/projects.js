@@ -34,13 +34,13 @@ export const useProjectsStore = defineStore('projects', () => {
   }
 
   // ── CREATE ────────────────────────────────────────────────────
-  async function addProject({ name, description, assignedUsers }) {
+  async function addProject({ name, description, assignedUsers, deadline, documents }) {
     loading.value = true
     try {
       const res = await fetch(`${API}/projects`, {
         method:  'POST',
         headers: headers(),
-        body:    JSON.stringify({ name, description, assignedUsers }),
+        body:    JSON.stringify({ name, description, assignedUsers, deadline, documents }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)

@@ -82,8 +82,11 @@
                 <span class="vis-tag" :class="task.visibility">
                   {{ task.visibility === 'public' ? '🌐 Publique' : '🔒 Privée' }}
                 </span>
-                <span v-if="task.comments?.length" class="vis-tag" style="background: #e0f2fe; color: #0369a1; padding: 2px 6px;">
-                   {{ task.comments.length }}
+                <span v-if="task.comments?.length" class="vis-tag" style="background: #e0f2fe; color: #0369a1; padding: 2px 6px;" title="Commentaires">
+                   💬 {{ task.comments.length }}
+                </span>
+                <span v-if="task.documents?.length" class="vis-tag" style="background: #f0fdf4; color: #166534; padding: 2px 6px;" title="Documents joints">
+                   📎 {{ task.documents.length }}
                 </span>
               </div>
               <span class="priority-pip" :class="task.priority">{{ priorityLabel(task.priority) }}</span>
@@ -211,6 +214,37 @@
             <option :value="null">Non assignée 👤</option>
           </select>
           <span class="vis-hint" style="margin-top:2px;">Seul l'administrateur peut réassigner cette tâche à autrui.</span>
+        </div>
+
+        <!-- Documents Upload Section -->
+        <div class="form-group" style="margin-top: 14px; border-top: 1px solid var(--gray-3); padding-top: 16px;">
+          <label style="font-weight: 600; font-size: 13px;">📎 Documents joints (Images, PDF, Graphes...)</label>
+          <div class="file-upload-wrapper" style="display:flex; align-items:center; gap:10px; margin-top: 6px;">
+            <input type="file" @change="handleFileUpload" :disabled="uploadLoading" id="task-file-input" style="display:none;" />
+            <label for="task-file-input" class="btn btn-ghost btn-sm" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; border:1px dashed var(--gray-4); padding:8px 12px; border-radius:var(--radius); font-size: 12px;">
+              📎 {{ uploadLoading ? 'Téléversement…' : 'Importer un document' }}
+            </label>
+          </div>
+
+          <!-- List of documents -->
+          <div v-if="form.documents && form.documents.length" class="task-docs-container" style="margin-top:12px; display:grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap:10px;">
+            <div v-for="(doc, idx) in form.documents" :key="idx" class="task-doc-card" style="border: 1px solid var(--gray-2); border-radius:var(--radius); padding:8px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; position:relative; background:var(--gray-1); text-align:center; min-height: 100px;">
+              <button class="icon-btn danger" @click.stop="removeDocument(idx)" title="Supprimer" style="position:absolute; top:4px; right:4px; border:none; background:transparent; font-size:10px; cursor:pointer;">✕</button>
+              
+              <!-- Preview image -->
+              <div v-if="isImage(doc.url)" class="doc-preview-img-wrap" style="width:100%; height:60px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:4px; margin-bottom:6px; background:#fff; border: 1px solid var(--gray-2);">
+                <img :src="doc.url" alt="Preview" style="max-width:100%; max-height:100%; object-fit:cover;" />
+              </div>
+              <!-- Preview PDF/icon -->
+              <div v-else class="doc-preview-icon" style="font-size:28px; margin-bottom:6px; line-height: 1;">
+                📄
+              </div>
+              
+              <a :href="doc.url" target="_blank" style="font-size:11px; color:var(--blue); text-decoration:underline; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;" :title="doc.name">
+                {{ doc.name }}
+              </a>
+            </div>
+          </div>
         </div>
 
         <!-- Comments Section -->
@@ -384,10 +418,52 @@ const showModal   = ref(false)
 const editingTask = ref(null)
 const formError   = ref(false)
 const saving      = ref(false)
-const form        = reactive({ title: '', description: '', priority: 'medium', status: 'todo', visibility: 'private', assignee: null, project: null })
+const form        = reactive({ title: '', description: '', priority: 'medium', status: 'todo', visibility: 'private', assignee: null, project: null, documents: [] })
+const uploadLoading = ref(false)
 
 const newCommentText = ref('')
 const commentSaving = ref(false)
+
+function isImage(url) {
+  if (!url) return false
+  return /\.(jpeg|jpg|gif|png|webp|svg)/i.test(url)
+}
+
+async function handleFileUpload(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  uploadLoading.value = true
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const res = await fetch('http://localhost:3000/api/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${auth.token}`
+      },
+      body: formData
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message)
+
+    form.documents.push({
+      name: data.name,
+      url: data.url
+    })
+    showToast('Fichier importé avec succès.', 'success')
+  } catch (e) {
+    showToast(e.message || "Erreur lors de l'import du fichier.", 'error')
+  } finally {
+    uploadLoading.value = false
+    event.target.value = ''
+  }
+}
+
+function removeDocument(index) {
+  form.documents.splice(index, 1)
+}
 
 function openModal(task = null, defaultStatus = 'todo') {
   editingTask.value = task
@@ -401,11 +477,13 @@ function openModal(task = null, defaultStatus = 'todo') {
     form.visibility  = task.visibility || 'private'
     form.assignee    = task.assignee?.id || task.assignee?._id || task.assignee || null
     form.project     = task.project?.id || task.project?._id || task.project || null
+    form.documents   = task.documents ? [...task.documents] : []
   } else {
     form.title = ''; form.description = ''
     form.priority = 'medium'; form.status = defaultStatus; form.visibility = 'private'
     form.assignee = auth.isAdmin ? null : (auth.currentUser?.id || auth.currentUser?._id)
     form.project  = selectedProjectId.value || (projectsStore.projects[0]?.id || null)
+    form.documents = []
   }
   showModal.value = true
 }
@@ -422,6 +500,7 @@ async function submitForm() {
         title: form.title, description: form.description,
         priority: form.priority, status: form.status, visibility: form.visibility,
         assignee: form.assignee,
+        documents: form.documents,
       })
       showToast('Tâche mise à jour', 'success')
     } else {
@@ -430,6 +509,7 @@ async function submitForm() {
         priority: form.priority, status: form.status, visibility: form.visibility,
         assignee: form.assignee,
         project: form.project,
+        documents: form.documents,
       })
       showToast('Tâche créée', 'success')
     }

@@ -34,11 +34,11 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   // ── CREATE ────────────────────────────────────────────────────
-  async function addTask({ title, description, priority, visibility, assignee, project }) {
+  async function addTask({ title, description, priority, visibility, assignee, project, documents }) {
     const res  = await fetch(`${API}/tasks`, {
       method:  'POST',
       headers: headers(),
-      body:    JSON.stringify({ title, description, priority, visibility, assignee, project }),
+      body:    JSON.stringify({ title, description, priority, visibility, assignee, project, documents }),
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message)

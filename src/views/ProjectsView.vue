@@ -40,6 +40,25 @@
         <h3 class="project-title">{{ proj.name }}</h3>
         <p class="project-desc">{{ proj.description || 'Aucune description fournie.' }}</p>
 
+        <!-- Project Deadline -->
+        <div v-if="proj.deadline" class="project-deadline-info" style="margin-bottom: 12px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+          <span>📅 Date limite :</span>
+          <span :style="{ color: isOverdue(proj.deadline) ? '#E24B4A' : 'var(--gray-7)', fontWeight: isOverdue(proj.deadline) ? '700' : '600' }">
+            {{ formatDate(proj.deadline) }} {{ isOverdue(proj.deadline) ? '(En retard)' : '' }}
+          </span>
+        </div>
+
+        <!-- Project Documents -->
+        <div v-if="proj.documents && proj.documents.length" class="project-docs-list" style="margin-bottom: 16px; border-top: 1px solid var(--gray-2); padding-top: 12px;">
+          <span class="users-label" style="display:block; margin-bottom: 6px;">📎 Documents ({{ proj.documents.length }}) :</span>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <a v-for="doc in proj.documents" :key="doc.url" :href="doc.url" target="_blank" class="project-doc-link" style="font-size: 12px; color: var(--blue); text-decoration: none; display: flex; align-items: center; gap: 4px;">
+              <span>📄</span>
+              <span style="text-decoration: underline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px;" :title="doc.name">{{ doc.name }}</span>
+            </a>
+          </div>
+        </div>
+
         <!-- Collaborators list -->
         <div class="project-users">
           <span class="users-label">Collaborateurs ({{ proj.assignedUsers?.length || 0 }}) :</span>
@@ -92,6 +111,29 @@
           <textarea v-model="form.description" rows="3" placeholder="Description du projet…"></textarea>
         </div>
 
+        <!-- Deadline -->
+        <div class="form-group">
+          <label>Date limite (Deadline)</label>
+          <input type="date" v-model="form.deadline" class="form-control" />
+        </div>
+
+        <!-- Document Upload -->
+        <div class="form-group">
+          <label>Document joint</label>
+          <div class="file-upload-wrapper" style="display: flex; gap: 10px; align-items: center;">
+            <input type="file" @change="handleFileUpload" :disabled="uploadLoading" id="project-file-input" style="display:none;" />
+            <label for="project-file-input" class="btn btn-ghost btn-sm" style="cursor:pointer; display: inline-flex; align-items: center; gap: 4px; border: 1px dashed var(--gray-4); padding: 8px 12px; border-radius: var(--radius);">
+              📎 {{ uploadLoading ? 'Téléversement…' : 'Choisir un fichier' }}
+            </label>
+          </div>
+          <div v-if="form.documents && form.documents.length" class="uploaded-files-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+            <div v-for="(doc, idx) in form.documents" :key="idx" class="uploaded-file-item" style="display: flex; justify-content: space-between; align-items: center; background: var(--gray-1); padding: 6px 10px; border-radius: var(--radius); font-size: 13px;">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px;">📄 {{ doc.name }}</span>
+              <button class="icon-btn danger" @click="removeDocument(idx)" title="Supprimer" style="border:none; background:transparent; cursor:pointer;">✕</button>
+            </div>
+          </div>
+        </div>
+
         <!-- User Assignment checkbox list -->
         <div class="form-group">
           <label>Affecter des collaborateurs ({{ form.assignedUsers.length }} sélectionnés)</label>
@@ -141,7 +183,11 @@ const form = reactive({
   name:          '',
   description:   '',
   assignedUsers: [],
+  deadline:      '',
+  documents:     [],
 })
+
+const uploadLoading = ref(false)
 
 const toast = reactive({ show: false, msg: '', type: 'success' })
 let toastTimer = null
@@ -159,6 +205,56 @@ function userInitials(user) {
   return user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 }
 
+function isOverdue(date) {
+  if (!date) return false
+  return new Date(date) < new Date() && new Date(date).toDateString() !== new Date().toDateString()
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('fr-FR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+async function handleFileUpload(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  uploadLoading.value = true
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const res = await fetch('http://localhost:3000/api/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${auth.token}`
+      },
+      body: formData
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message)
+
+    form.documents.push({
+      name: data.name,
+      url: data.url
+    })
+    showToast('Fichier importé avec succès.', 'success')
+  } catch (e) {
+    showToast(e.message || "Erreur lors de l'import du fichier.", 'error')
+  } finally {
+    uploadLoading.value = false
+    event.target.value = ''
+  }
+}
+
+function removeDocument(index) {
+  form.documents.splice(index, 1)
+}
+
 function openModal(proj = null) {
   editingProject.value = proj
   formError.value      = false
@@ -166,10 +262,14 @@ function openModal(proj = null) {
     form.name          = proj.name
     form.description   = proj.description || ''
     form.assignedUsers = proj.assignedUsers?.map(u => u.id || u._id || u) || []
+    form.deadline      = proj.deadline ? proj.deadline.substring(0, 10) : ''
+    form.documents     = proj.documents || []
   } else {
     form.name          = ''
     form.description   = ''
     form.assignedUsers = []
+    form.deadline      = ''
+    form.documents     = []
   }
   showModal.value = true
 }
@@ -190,6 +290,8 @@ async function submitForm() {
         name:          form.name,
         description:   form.description,
         assignedUsers: form.assignedUsers,
+        deadline:      form.deadline || null,
+        documents:     form.documents,
       })
       showToast('Projet mis à jour avec succès.', 'success')
     } else {
@@ -197,6 +299,8 @@ async function submitForm() {
         name:          form.name,
         description:   form.description,
         assignedUsers: form.assignedUsers,
+        deadline:      form.deadline || null,
+        documents:     form.documents,
       })
       showToast('Projet créé avec succès.', 'success')
     }
