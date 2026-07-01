@@ -74,31 +74,34 @@ async function submit() {
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  margin: 0 auto 30px;
-}
+ }
+
+.auth-logo {
+  display: flex;
+  align-items: center;      /* Centre verticalement */
+  justify-content: center;  /* Centre horizontalement */
+  
+ }
+
 
 .auth-logo-img {
-  width: 150px;   
-  height: auto;
-  display: block;
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
 }
 
 .auth-logo-text {
-  position: absolute;
-  left: 110%;
-  top: 55%;
-  transform: translate(-50%, -50%);
-
-  font-size: 35px;
-  font-weight: 800;
-  color: rgb(19, 60, 209);              
-  text-shadow: 0 2px 8px rgba(0,0,0,0.35);
-
-  white-space: nowrap;
-  pointer-events: none;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--blue);
 }
-.auth-title {  transform: translate(50%, -50%); top: 35%;  left: 42%;
-  position: absolute;font-size: 22px; font-weight: 600; margin-bottom: 50px; text-align: center; }
+.auth-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
 .auth-link  { text-align: center; margin-top: 16px; font-size: 13px; color: var(--gray-5); }
 .auth-link a { color: var(--blue); text-decoration: none; font-weight: 500; }
 .demo-info {
