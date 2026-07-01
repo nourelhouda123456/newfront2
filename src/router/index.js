@@ -10,6 +10,7 @@ const AdminView       = () => import('../views/AdminView.vue')
 const ProfileView     = () => import('../views/ProfileView.vue')
 const ActivityLogView = () => import('../views/ActivityLogView.vue')
 const ProjectsView    = () => import('../views/ProjectsView.vue')
+const OAuthCallbackView = () => import('../views/OAuthCallbackView.vue')
 
 const routes = [
   { path: '/',              redirect: '/dashboard' },
@@ -21,6 +22,7 @@ const routes = [
   { path: '/profile',       component: ProfileView,      meta: { requiresAuth: true } },
   { path: '/admin',         component: AdminView,        meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/admin/logs',    component: ActivityLogView,  meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/oauth/callback',component: OAuthCallbackView,meta: { public: true } },
 ]
 
 const router = createRouter({

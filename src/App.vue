@@ -13,5 +13,10 @@ const auth = useAuthStore()
 </script>
 
 <style>
-#app-root { min-height: 100vh; display: flex; flex-direction: column; }
+#app-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #F4F5F7;
+}
 </style>

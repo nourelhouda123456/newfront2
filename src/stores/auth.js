@@ -61,8 +61,26 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('user', JSON.stringify(data.user))
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      // Enregistrer la déconnexion dans le journal
+      await fetch(`${API}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token.value}` }
+      })
+    } catch {}
     clearSession()
+  }
+
+  // Initier la connexion Google (redirige vers le backend)
+  function loginWithGoogle() {
+    window.location.href = `${API}/auth/google`
+  }
+
+  // Appelé depuis OAuthCallbackView après retour Google
+  function handleGoogleCallback(tokenValue, userData) {
+    const user = typeof userData === 'string' ? JSON.parse(decodeURIComponent(userData)) : userData
+    setSession({ token: tokenValue, user })
   }
 
   const users = ref([])
@@ -153,6 +171,7 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     token, currentUser, isAuthenticated, isAdmin, users,
     register, login, logout, fetchMe, fetchUsers, getAllUsers,
-    toggleUserActive, changeUserRole, deleteUser, updateProfile, updatePassword
+    toggleUserActive, changeUserRole, deleteUser, updateProfile, updatePassword,
+    loginWithGoogle, handleGoogleCallback
   }
 })
