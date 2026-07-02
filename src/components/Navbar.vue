@@ -45,6 +45,11 @@
       <!-- Right -->
       <div class="nav-right">
         
+        <!-- Dictation Button -->
+        <button class="btn btn-ghost btn-sm" @click="voicePromptState.open()" title="Dictée vocale">
+          🎙️ Créer
+        </button>
+
         <!-- Notifications (Admin only pour l'instant) -->
         <div v-if="auth.isAdmin" class="nav-notifs" style="position:relative;">
           <button class="btn btn-ghost btn-sm notif-btn" @click="notifOpen = !notifOpen" style="position:relative;">
@@ -105,6 +110,7 @@
         <router-link v-if="auth.isAdmin" to="/admin" class="mobile-link" @click="mobileOpen=false">Admin</router-link>
         <router-link v-if="auth.isAdmin" to="/admin/logs" class="mobile-link" @click="mobileOpen=false">Journal</router-link>
         <router-link to="/profile" class="mobile-link" @click="mobileOpen=false">Profil</router-link>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px; color: #fff; background: rgba(255,255,255,.15);" @click="voicePromptState.open(); mobileOpen=false;">🎙️ Dictée vocale</button>
         <button class="btn btn-ghost btn-sm" style="margin-top:8px;" @click="logout">Déconnexion</button>
       </div>
     </transition>
@@ -116,6 +122,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useNotificationsStore } from '../stores/notifications.js'
+import { voicePromptState } from '../composables/voicePromptState.js'
 
 const auth = useAuthStore()
 const notifsStore = useNotificationsStore()
