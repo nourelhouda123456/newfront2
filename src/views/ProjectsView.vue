@@ -9,11 +9,7 @@
         </p>
       </div>
       <div class="header-actions">
-        <!-- Bouton vocal (admin) -->
-        <button v-if="auth.isAdmin" class="btn btn-ghost" @click="handleVoiceCommand" :class="{ 'listening': isListening }" :title="isSupported ? 'Créer par la voix' : 'Reconnaissance vocale non supportée'">
-          <span v-if="isListening" class="pulse-dot">🔴</span>
-          <span v-else>🎤</span>
-        </button>
+        
 
         <button v-if="auth.isAdmin" class="btn btn-primary" @click="openModal()">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.5.5 0 01.5.5v5h5a.5.5 0 010 1h-5v5a.5.5 0 01-1 0v-5h-5a.5.5 0 010-1h5v-5A.5.5 0 018 2z"/></svg>
@@ -410,8 +406,12 @@ onMounted(() => {
 
 <style scoped>
 .projects-page {
-  padding: 28px 32px;
-  max-width: 1300px; margin: 0 auto;
+  padding: 24px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  background: #f7f8fa;
+  min-height: 100vh;
 }
 
 .page-header {
@@ -433,7 +433,7 @@ onMounted(() => {
 .empty-state p { color: #7A869A; font-size: 14px; }
 
 /* ── Projects Grid ──────────────────────────── */
-.projects-grid {
+ .projects-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;

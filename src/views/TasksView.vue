@@ -24,11 +24,7 @@
         </div>
       </div>
       <div class="header-actions">
-        <!-- Bouton vocal -->
-        <button class="btn btn-ghost" @click="handleVoiceCommand" :class="{ 'listening': isListening }" :title="isSupported ? 'Créer par la voix' : 'Reconnaissance vocale non supportée'">
-          <span v-if="isListening" class="pulse-dot">🔴</span>
-          <span v-else>🎤</span>
-        </button>
+       
 
         <button class="btn btn-primary" @click="openModal()">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.5.5 0 01.5.5v5h5a.5.5 0 010 1h-5v5a.5.5 0 01-1 0v-5h-5a.5.5 0 010-1h5v-5A.5.5 0 018 2z"/></svg>
@@ -150,6 +146,25 @@
       </div>
     </div>
 
+    <!-- ═══════════ CONFIRM / ERROR MODAL ═══════════ -->
+    <transition name="toast-anim">
+      <div v-if="confirmModal.show" class="modal-overlay" @click.self="closeConfirm">
+        <div class="confirm-box" :class="confirmModal.type">
+          <div class="confirm-icon">{{ confirmModal.type === 'error' ? '⚠️' : '🔄' }}</div>
+          <p class="confirm-message">{{ confirmModal.message }}</p>
+          <div class="confirm-actions">
+            <template v-if="confirmModal.type === 'confirm'">
+              <button class="btn btn-ghost" @click="closeConfirm">Annuler</button>
+              <button class="btn btn-primary" @click="handleConfirmYes">Confirmer</button>
+            </template>
+            <template v-else>
+              <button class="btn btn-primary" @click="closeConfirm">OK, compris</button>
+            </template>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- ═══════════ MODAL CREATE / EDIT ═══════════ -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal-box modal-box-lg">
@@ -215,8 +230,8 @@
             </div>
           </div>
 
-          <!-- Visibility (admin only) -->
-          <div v-if="auth.isAdmin" class="form-group">
+          <!-- Visibility (admin ou user) -->
+          <div v-if="auth.isAdmin  || auth.currentUser" class="form-group">
             <label>Visibilité</label>
             <div class="vis-toggle">
               <button type="button" :class="['vis-btn', form.visibility === 'private' ? 'active' : '']" @click="form.visibility = 'private'">
@@ -618,54 +633,97 @@ const isStatusSelectDisabled = computed(() => editingTask.value && editingTask.v
 const requestingReopen = ref(false)
 const requestingReopenId = ref({})
 
+// ── Confirm / Error Modal ────────────────────────────────────────
+const confirmModal = reactive({
+  show: false,
+  message: '',
+  type: 'confirm', // 'confirm' | 'error'
+  action: null
+})
+
+function openConfirm(message, action) {
+  confirmModal.show = true
+  confirmModal.type = 'confirm'
+  confirmModal.message = message
+  confirmModal.action = action
+}
+
+function showErrorModal(message) {
+  confirmModal.show = true
+  confirmModal.type = 'error'
+  confirmModal.message = message
+  confirmModal.action = null
+}
+
+function closeConfirm() {
+  confirmModal.show = false
+  confirmModal.action = null
+}
+
+async function handleConfirmYes() {
+  const action = confirmModal.action
+  closeConfirm()
+  if (action) await action()
+}
+
 async function requestReopen() {
-  if (!confirm("Voulez-vous demander à l'administrateur de rouvrir cette tâche ?")) return
-  requestingReopen.value = true
-  try {
-    const res = await fetch(`http://localhost:3000/api/tasks/${editingTask.value._id || editingTask.value.id}/request-reopen`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${auth.token}`
+  if (requestingReopen.value) return
+  openConfirm("Voulez-vous demander à l'administrateur de rouvrir cette tâche ?", async () => {
+    requestingReopen.value = true
+    try {
+      const res = await fetch(`http://localhost:3000/api/tasks/${editingTask.value._id || editingTask.value.id}/request-reopen`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth.token}`
+        }
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 409) { showErrorModal(data.message); return }
+        throw new Error(data.message)
       }
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message)
-    editingTask.value = data.task
-    showToast('Demande envoyée à l\'administrateur', 'success')
-  } catch (e) {
-    showToast(e.message || 'Erreur', 'error')
-  } finally {
-    requestingReopen.value = false
-  }
+      editingTask.value = data.task
+      showToast('Demande envoyée à l\'administrateur', 'success')
+    } catch (e) {
+      showToast(e.message || 'Erreur', 'error')
+    } finally {
+      requestingReopen.value = false
+    }
+  })
 }
 
 async function requestReopenFromCard(task) {
-  if (!confirm("Voulez-vous demander à l'administrateur de rouvrir cette tâche ?")) return
   const id = task._id || task.id
-  requestingReopenId.value[id] = true
-  try {
-    const res = await fetch(`http://localhost:3000/api/tasks/${id}/request-reopen`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${auth.token}`
+  if (requestingReopenId.value[id]) return
+  openConfirm("Voulez-vous demander à l'administrateur de rouvrir cette tâche ?", async () => {
+    requestingReopenId.value[id] = true
+    try {
+      const res = await fetch(`http://localhost:3000/api/tasks/${id}/request-reopen`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth.token}`
+        }
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 409) { showErrorModal(data.message); return }
+        throw new Error(data.message)
       }
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message)
-    
-    // Mettre à jour la tâche dans le store
-    const idx = tasksStore.tasks.findIndex(t => (t._id || t.id) === id)
-    if (idx !== -1) {
-      tasksStore.tasks[idx] = data.task
+
+      // Mettre à jour la tâche dans le store
+      const idx = tasksStore.tasks.findIndex(t => (t._id || t.id) === id)
+      if (idx !== -1) {
+        tasksStore.tasks[idx] = data.task
+      }
+      showToast('Demande envoyée à l\'administrateur', 'success')
+    } catch (e) {
+      showToast(e.message || 'Erreur', 'error')
+    } finally {
+      requestingReopenId.value[id] = false
     }
-    showToast('Demande envoyée à l\'administrateur', 'success')
-  } catch (e) {
-    showToast(e.message || 'Erreur', 'error')
-  } finally {
-    requestingReopenId.value[id] = false
-  }
+  })
 }
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -1110,6 +1168,45 @@ input:focus, select:focus, textarea:focus { border-color: #0052CC; box-shadow: 0
 .tl-label { font-size: 12px; font-weight: 700; color: #172B4D; }
 .tl-note  { font-weight: 400; color: #7A869A; }
 .tl-time  { font-size: 11px; color: #7A869A; }
+
+/* ════════════════════════════════════════════════
+   CONFIRM / ERROR MODAL
+════════════════════════════════════════════════ */
+.confirm-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(9,30,66,.3);
+  width: 100%;
+  max-width: 360px;
+  padding: 28px 24px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: fadeUp .25s ease;
+}
+.confirm-icon {
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  font-size: 22px;
+  margin-bottom: 14px;
+  background: #FFF0E0;
+}
+.confirm-box.error .confirm-icon { background: #FFEBE6; }
+.confirm-message {
+  font-size: 14px;
+  font-weight: 600;
+  color: #172B4D;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.confirm-actions .btn { flex: 1; justify-content: center; }
 
 /* ════════════════════════════════════════════════
    RESPONSIVE

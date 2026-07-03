@@ -8,12 +8,7 @@
 
       <div class="vp-body">
         <div class="vp-status" :class="{ listening: isListening }">
-          <div class="vp-mic" @click="toggleListening">
-            <span v-if="isListening" class="pulse">🔴</span>
-            <span v-else>🎤</span>
-          </div>
-          <p>{{ isListening ? 'Je vous écoute, parlez...' : 'Microphone désactivé' }}</p>
-        </div>
+        
 
         <div class="vp-transcript">
           <p class="final-text">{{ finalTranscript }}</p>
@@ -80,7 +75,7 @@
               </div>
             </div>
 
-            <div class="form-row" v-if="auth.isAdmin">
+            <div class="form-row" v-if="auth.isAdmin  || auth.currentUser">
               <div class="form-group">
                 <label>Visibilité</label>
                 <select v-model="parsedData.visibility" class="vp-select">
@@ -151,6 +146,7 @@
         </div>
       </transition>
     </div>
+  </div>
   </div>
 </template>
 
@@ -363,13 +359,8 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
-function toggleListening() {
-  if (isListening.value) {
-    stopListening()
-  } else {
-    startListening()
-  }
-}
+ 
+
 
 function resetPrompt() {
   resetTranscripts()
@@ -514,9 +505,7 @@ async function confirmCreation() {
 }
 .vp-status p { margin: 0; font-size: 13px; color: #7A869A; font-weight: 600; }
 
-.pulse {
-  animation: pulse-anim 1s infinite alternate;
-}
+ 
 @keyframes pulse-anim {
   from { transform: scale(1); opacity: 0.8; }
   to { transform: scale(1.2); opacity: 1; }

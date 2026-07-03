@@ -14,7 +14,7 @@
           <span class="brand-name">TaskFlow</span>
         </div>
         <h2 class="side-headline">Gérez vos projets efficacement.</h2>
-        <p class="side-desc">Organisez, collaborez et suivez vos tâches avec une interface fluide inspirée de Trello.</p>
+        <p class="side-desc">Organisez, collaborez et suivez vos tâches avec une interface fluide.</p>
         <div class="side-features">
           <div class="side-feature"><span class="feat-icon">✅</span> Kanban boards intuitifs</div>
           <div class="side-feature"><span class="feat-icon">👥</span> Collaboration en équipe</div>
