@@ -50,8 +50,8 @@
           🎙️ Créer
         </button>
 
-        <!-- Notifications (Admin only pour l'instant) -->
-        <div v-if="auth.isAdmin || auth.currentUser" class="nav-notifs" style="position:relative;">
+        <!-- Notifications (tous les utilisateurs) -->
+        <div v-if="auth.currentUser" class="nav-notifs" style="position:relative;">
           <button class="btn btn-ghost btn-sm notif-btn" @click="notifOpen = !notifOpen" style="position:relative;">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16a2 2 0 002-2H6a2 2 0 002 2zM8 1.918l-.797.161A4.002 4.002 0 004 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 00-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 111.99 0A5.002 5.002 0 0113 6c0 .88.32 4.2 1.22 6z"/></svg>
             <span v-if="notifsStore.notifications.length > 0" class="notif-badge">{{ notifsStore.notifications.length }}</span>
@@ -66,11 +66,48 @@
               <div v-if="notifsStore.notifications.length === 0" class="notif-empty">
                 Aucune notification.
               </div>
-              <div v-for="n in notifsStore.notifications" :key="n.id || n._id" class="notif-item">
-                <p class="notif-msg">{{ n.message }}</p>
-                <div class="notif-actions">
-                  <button class="btn btn-primary btn-sm" @click="approveNotif(n.id || n._id)">Approuver</button>
-                  <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Ignorer</button>
+              <div v-for="n in notifsStore.notifications" :key="n.id || n._id" class="notif-item" :class="notifTypeClass(n.type)">
+                <div class="notif-type-badge">
+                  <span v-if="n.type === 'COMMENT'">💬</span>
+                  <span v-else-if="n.type === 'REOPEN_REQUEST'">🔄</span>
+                  <span v-else-if="n.type === 'DEADLINE_ALERT'">⏰</span>
+                  <span v-else>🔔</span>
+                </div>
+                <div class="notif-content">
+                  <p class="notif-msg">{{ n.message }}</p>
+                  <p class="notif-time">{{ formatDate(n.createdAt) }}</p>
+                  <div class="notif-actions">
+                    <!-- Commentaire : ouvrir la tâche + répondre -->
+                    <template v-if="n.type === 'COMMENT'">
+                      <button
+                        v-if="n.task"
+                        class="btn btn-primary btn-sm"
+                        @click="openTask(n); notifOpen = false"
+                      >Voir la tâche</button>
+                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Marquer lu</button>
+                    </template>
+
+                    <!-- Demande de réouverture : Approuver ou Ignorer -->
+                    <template v-else-if="n.type === 'REOPEN_REQUEST'">
+                      <button class="btn btn-success btn-sm" @click="approveNotif(n.id || n._id)">✔ Approuver</button>
+                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Ignorer</button>
+                    </template>
+
+                    <!-- Alerte deadline -->
+                    <template v-else-if="n.type === 'DEADLINE_ALERT'">
+                      <button
+                        v-if="n.project"
+                        class="btn btn-warning btn-sm"
+                        @click="$router.push('/projects'); notifOpen = false"
+                      >Voir le projet</button>
+                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">OK</button>
+                    </template>
+
+                    <!-- Autres (INFO) -->
+                    <template v-else>
+                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Marquer lu</button>
+                    </template>
+                  </div>
                 </div>
               </div>
             </div>
@@ -131,15 +168,37 @@ const mobileOpen = ref(false)
 const notifOpen = ref(false)
 
 onMounted(() => {
-  if (auth.isAdmin) {
+  if (auth.currentUser) {
     notifsStore.fetchNotifications()
+    // Rafraîchir toutes les 30 secondes
+    setInterval(() => notifsStore.fetchNotifications(), 30000)
   }
 })
+
+function notifTypeClass(type) {
+  if (type === 'COMMENT')       return 'notif-comment'
+  if (type === 'REOPEN_REQUEST') return 'notif-reopen'
+  if (type === 'DEADLINE_ALERT') return 'notif-deadline'
+  return ''
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+function openTask(notif) {
+  const taskId = notif.task?.id || notif.task?._id || notif.task
+  if (taskId) {
+    router.push(`/tasks?openTask=${taskId}`)
+    notifsStore.markAsRead(notif.id || notif._id)
+  }
+}
 
 async function approveNotif(id) {
   try {
     await notifsStore.approveReopen(id)
-    // Optionnel : afficher un toast ou actualiser les tâches si on est sur la page
   } catch (e) {
     console.error(e)
   }
@@ -302,40 +361,67 @@ async function logout() {
 }
 .notif-dropdown {
   position: absolute; top: 100%; right: 0;
-  width: 300px; background: #fff;
-  border-radius: 8px; box-shadow: 0 4px 12px rgba(9,30,66,.2);
+  width: 340px; background: #fff;
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(9,30,66,.2);
   margin-top: 8px; z-index: 250;
   border: 1px solid #EBECF0;
   overflow: hidden;
 }
 .notif-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px; background: #F4F5F7; border-bottom: 1px solid #EBECF0;
+  padding: 12px 14px; background: #F4F5F7; border-bottom: 1px solid #EBECF0;
 }
-.notif-header h4 { margin: 0; font-size: 14px; color: #172B4D; }
+.notif-header h4 { margin: 0; font-size: 14px; color: #172B4D; font-weight: 700; }
 .notif-body {
-  max-height: 300px; overflow-y: auto;
+  max-height: 380px; overflow-y: auto;
 }
 .notif-empty {
-  padding: 20px; text-align: center; color: #7A869A; font-size: 13px;
+  padding: 24px; text-align: center; color: #7A869A; font-size: 13px;
 }
 .notif-item {
-  padding: 12px; border-bottom: 1px solid #EBECF0;
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px 14px; border-bottom: 1px solid #EBECF0;
+  transition: background .15s;
 }
 .notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: #F8F9FA; }
+
+/* Type colors — left border accent */
+.notif-item.notif-comment  { border-left: 3px solid #0052CC; }
+.notif-item.notif-reopen   { border-left: 3px solid #FF991F; }
+.notif-item.notif-deadline { border-left: 3px solid #DE350B; }
+
+.notif-type-badge {
+  font-size: 18px; flex-shrink: 0; margin-top: 1px;
+}
+.notif-content {
+  flex: 1; min-width: 0;
+}
 .notif-msg {
-  margin: 0 0 8px 0; font-size: 13px; color: #172B4D; line-height: 1.4;
+  margin: 0 0 4px 0; font-size: 13px; color: #172B4D; line-height: 1.4;
+  word-break: break-word;
+}
+.notif-time {
+  margin: 0 0 8px 0; font-size: 11px; color: #7A869A;
 }
 .notif-actions {
-  display: flex; gap: 8px;
+  display: flex; gap: 6px; flex-wrap: wrap;
 }
 .notif-actions .btn {
-  font-size: 11px; padding: 4px 8px;
+  font-size: 11px; padding: 4px 8px; border-radius: 5px;
 }
+.notif-actions .btn-success {
+  background: #36B37E; color: #fff; border: none;
+}
+.notif-actions .btn-success:hover { background: #00875A; }
+.notif-actions .btn-warning {
+  background: #FF991F; color: #fff; border: none;
+}
+.notif-actions .btn-warning:hover { background: #e0820a; }
 .notif-actions .btn-ghost {
-  color: #7A869A; background: #EBECF0;
+  color: #7A869A; background: #EBECF0; border: none;
 }
 .notif-actions .btn-ghost:hover {
   background: #DFE1E6; color: #172B4D;
 }
-</style>
+</style>

@@ -360,7 +360,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useTasksStore } from '../stores/tasks.js'
@@ -769,8 +769,8 @@ function showToast(msg, type = 'success') {
 }
 
 // ── Init ────────────────────────────────────────────────────────
-onMounted(() => {
-  tasksStore.fetchTasks()
+onMounted(async () => {
+  await tasksStore.fetchTasks()
   projectsStore.fetchProjects()
   if (auth.isAdmin) auth.fetchUsers()
 
@@ -779,6 +779,25 @@ onMounted(() => {
     openModal()
   }
   if (route.query.projectId) selectedProjectId.value = route.query.projectId
+
+  // Ouvrir automatiquement le popup si ?openTask=ID est présent
+  if (route.query.openTask) {
+    const taskId = route.query.openTask
+    const task = tasksStore.tasks.find(t => (t._id || t.id) === taskId)
+    if (task) {
+      openModal(task)
+    }
+    router.replace({ query: {} })
+  }
+})
+
+// Si on navigue vers la même page avec un nouveau openTask (déjà montée)
+watch(() => route.query.openTask, async (newId) => {
+  if (!newId) return
+  if (!tasksStore.tasks.length) await tasksStore.fetchTasks()
+  const task = tasksStore.tasks.find(t => (t._id || t.id) === newId)
+  if (task) openModal(task)
+  router.replace({ query: {} })
 })
 </script>
 
