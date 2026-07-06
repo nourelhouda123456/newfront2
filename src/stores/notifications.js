@@ -56,5 +56,16 @@ export const useNotificationsStore = defineStore('notifications', () => {
     return data.task
   }
 
-  return { notifications, loading, error, fetchNotifications, markAsRead, approveReopen }
+  async function ignoreReopen(id) {
+    const res = await fetch(`${API}/notifications/${id}/ignore`, {
+      method: 'PUT',
+      headers: headers()
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message)
+    notifications.value = notifications.value.filter(n => n.id !== id && n._id !== id)
+    return data.task
+  }
+
+  return { notifications, loading, error, fetchNotifications, markAsRead, approveReopen, ignoreReopen }
 })

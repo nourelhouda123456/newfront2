@@ -71,8 +71,8 @@
                   <span v-if="n.type === 'COMMENT'">💬</span>
                   <span v-else-if="n.type === 'REOPEN_REQUEST'">🔄</span>
                   <span v-else-if="n.type === 'DEADLINE_ALERT'">⏰</span>
-                  <span v-else-if="n.type === 'app'">⏰</span>
-
+                  <span v-else-if="n.type === 'APPROVE'">✅</span>
+                  <span v-else-if="n.type === 'IGNORE'">❌</span>
                   <span v-else>🔔</span>
                 </div>
                 <div class="notif-content">
@@ -92,7 +92,17 @@
                     <!-- Demande de réouverture : Approuver ou Ignorer -->
                     <template v-else-if="n.type === 'REOPEN_REQUEST'">
                       <button class="btn btn-success btn-sm" @click="approveNotif(n.id || n._id)">✔ Approuver</button>
-                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Ignorer</button>
+                      <button class="btn btn-ghost btn-sm" @click="ignoreNotif(n.id || n._id)">Ignorer</button>
+                    </template>
+
+                    <!-- Réponses à la demande de réouverture -->
+                    <template v-else-if="n.type === 'APPROVE' || n.type === 'IGNORE'">
+                      <button
+                        v-if="n.task"
+                        class="btn btn-primary btn-sm"
+                        @click="openTask(n); notifOpen = false"
+                      >Voir la tâche</button>
+                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Marquer lu</button>
                     </template>
 
                     <!-- Alerte deadline -->
@@ -181,6 +191,8 @@ function notifTypeClass(type) {
   if (type === 'COMMENT')       return 'notif-comment'
   if (type === 'REOPEN_REQUEST') return 'notif-reopen'
   if (type === 'DEADLINE_ALERT') return 'notif-deadline'
+  if (type === 'APPROVE')        return 'notif-approve'
+  if (type === 'IGNORE')         return 'notif-ignore'
   return ''
 }
 
@@ -201,6 +213,14 @@ function openTask(notif) {
 async function approveNotif(id) {
   try {
     await notifsStore.approveReopen(id)
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function ignoreNotif(id) {
+  try {
+    await notifsStore.ignoreReopen(id)
   } catch (e) {
     console.error(e)
   }
@@ -392,6 +412,8 @@ async function logout() {
 .notif-item.notif-comment  { border-left: 3px solid #0052CC; }
 .notif-item.notif-reopen   { border-left: 3px solid #FF991F; }
 .notif-item.notif-deadline { border-left: 3px solid #DE350B; }
+.notif-item.notif-approve  { border-left: 3px solid #36B37E; }
+.notif-item.notif-ignore   { border-left: 3px solid #DE350B; }
 
 .notif-type-badge {
   font-size: 18px; flex-shrink: 0; margin-top: 1px;
