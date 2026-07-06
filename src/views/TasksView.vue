@@ -128,7 +128,7 @@
               <span class="card-date" :title="'Dernière modification : ' + getLatestStatusDate(task)">{{ getLatestStatusDate(task) }}</span>
               <div class="card-actions">
                 <!-- Bouton demander directement sur la carte pour les tâches verrouillées -->
-                <button v-if="isTaskLocked(task) && !requestingReopenId[task._id || task.id]" class="btn-icon" @click.stop="requestReopenFromCard(task)" title="Demander la réouverture" style="color: #FF991F;">
+                <button v-if="isTaskLocked(task) && isTaskDeletable(task)  && !requestingReopenId[task._id || task.id]" class="btn-icon" @click.stop="requestReopenFromCard(task)" title="Demander la réouverture" style="color: #FF991F;">
                   🔄
                 </button>
                 <div v-else-if="requestingReopenId[task._id || task.id]" class="spinner spinner-sm" style="border-top-color:#0052CC;width:12px;height:12px;"></div>
@@ -208,7 +208,7 @@
           <div class="form-row">
             <div class="form-group">
               <label>Priorité</label>
-              <select v-model="form.priority" :disabled="!auth.isAdmin">
+              <select v-model="form.priority"  >
                 <option value="low">🟢 Basse</option>
                 <option value="medium">🟡 Moyenne</option>
                 <option value="high">🔴 Haute</option>
@@ -328,12 +328,10 @@
                 <div class="tl-content">
                   <span class="tl-label">
                     {{ statusLabel(entry.newStatus) }}
-                    <span v-if="entry.note" class="tl-note">— {{ entry.note }}</span>
-                  </span>
+                   </span>
                   <span class="tl-time">
                     {{ formatDateTime(entry.changedAt) }}
-                    <span v-if="entry.changedBy"> par {{ entry.changedBy.name || entry.changedBy }}</span>
-                  </span>
+                   </span>
                 </div>
               </div>
               <div v-if="!editingTask.statusHistory?.length" class="tl-item">

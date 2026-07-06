@@ -47,7 +47,7 @@
         
         <!-- Dictation Button -->
         <button class="btn btn-ghost btn-sm" @click="voicePromptState.open()" title="Dictée vocale">
-          🎙️ Créer
+          🎙️
         </button>
 
         <!-- Notifications (tous les utilisateurs) -->
@@ -71,6 +71,8 @@
                   <span v-if="n.type === 'COMMENT'">💬</span>
                   <span v-else-if="n.type === 'REOPEN_REQUEST'">🔄</span>
                   <span v-else-if="n.type === 'DEADLINE_ALERT'">⏰</span>
+                  <span v-else-if="n.type === 'app'">⏰</span>
+
                   <span v-else>🔔</span>
                 </div>
                 <div class="notif-content">
@@ -424,4 +426,4 @@ async function logout() {
 .notif-actions .btn-ghost:hover {
   background: #DFE1E6; color: #172B4D;
 }
-</style>
+</style>

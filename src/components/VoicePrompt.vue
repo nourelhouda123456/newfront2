@@ -16,7 +16,7 @@
         </div>
         
         <div class="vp-instructions">
-          Dites ce que vous souhaitez faire. Exemple : "Crée une tâche urgente pour corriger le bug de connexion dans le projet Alpha." ou "Supprime le projet Beta."
+          Dites ce que vous souhaitez faire.
         </div>
 
         <div class="vp-transcript">
