@@ -67,7 +67,8 @@
     <!-- Progress Section -->
     <div class="progress-section card" v-if="stats.total > 0">
       <div class="progress-header">
-        <div>
+   
+         <div>
           <div class="progress-title">Progression globale</div>
           <div class="progress-sub">{{ stats.done }} sur {{ stats.total }} tâches complétées</div>
         </div>
@@ -110,7 +111,14 @@
     </div>
 
     <!-- Two column layout -->
-    <div class="dashboard-grid">
+ 
+  <ProjectSummaryModal
+      :is-open="summaryModalOpen"
+      :project="selectedProject"
+      @close="summaryModalOpen = false"
+    />
+ 
+      <div class="dashboard-grid">
       <!-- Recent Tasks -->
       <div class="card recent-tasks-card">
         <div class="card-head">
@@ -183,12 +191,18 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useTasksStore } from '../stores/tasks.js'
+ 
 
 const auth  = useAuthStore()
 const tasks = useTasksStore()
+
+ 
+ 
+ 
+ 
 
 onMounted(() => {
   tasks.fetchTasks()
