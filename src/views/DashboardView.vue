@@ -67,7 +67,12 @@
     <!-- Progress Section -->
     <div class="progress-section card" v-if="stats.total > 0">
       <div class="progress-header">
+<<<<<<< HEAD
         <div>
+=======
+   
+         <div>
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
           <div class="progress-title">Progression globale</div>
           <div class="progress-sub">{{ stats.done }} sur {{ stats.total }} tâches complétées</div>
         </div>
@@ -110,7 +115,18 @@
     </div>
 
     <!-- Two column layout -->
+<<<<<<< HEAD
     <div class="dashboard-grid">
+=======
+ 
+  <ProjectSummaryModal
+      :is-open="summaryModalOpen"
+      :project="selectedProject"
+      @close="summaryModalOpen = false"
+    />
+ 
+      <div class="dashboard-grid">
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
       <!-- Recent Tasks -->
       <div class="card recent-tasks-card">
         <div class="card-head">
@@ -183,13 +199,28 @@
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useTasksStore } from '../stores/tasks.js'
+=======
+import { ref, computed, onMounted } from 'vue'
+import { useAuthStore } from '../stores/auth.js'
+import { useTasksStore } from '../stores/tasks.js'
+ 
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 
 const auth  = useAuthStore()
 const tasks = useTasksStore()
 
+<<<<<<< HEAD
+=======
+ 
+ 
+ 
+ 
+
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 onMounted(() => {
   tasks.fetchTasks()
   if (auth.isAdmin) auth.fetchUsers()

@@ -56,6 +56,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     return data.task
   }
 
+<<<<<<< HEAD
   async function ignoreReopen(id) {
     const res = await fetch(`${API}/notifications/${id}/ignore`, {
       method: 'PUT',
@@ -68,4 +69,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
 
   return { notifications, loading, error, fetchNotifications, markAsRead, approveReopen, ignoreReopen }
+=======
+  return { notifications, loading, error, fetchNotifications, markAsRead, approveReopen }
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 })

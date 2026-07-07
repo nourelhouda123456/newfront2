@@ -53,9 +53,25 @@
 
         <div class="project-card-body">
           <!-- Top meta -->
+<<<<<<< HEAD
           <div class="project-meta-top">
             <span class="project-tag">PROJET</span>
             <div class="project-card-actions" @click.stop>
+=======
+      <div class="project-meta-top">
+  <span class="project-tag">PROJET</span>
+  <div class="project-card-actions" @click.stop>
+<button class="btn-icon" @click.stop="openSummary(proj)" title="Résumé IA">
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <path d="M12 3L13.8 8.2L19 10L13.8 11.8L12 17L10.2 11.8L5 10L10.2 8.2L12 3Z"
+          fill="#8B5CF6"/>
+    <path d="M19 2L19.7 4.3L22 5L19.7 5.7L19 8L18.3 5.7L16 5L18.3 4.3L19 2Z"
+          fill="#F59E0B"/>
+    <path d="M5 16L5.7 18.3L8 19L5.7 19.7L5 22L4.3 19.7L2 19L4.3 18.3L5 16Z"
+          fill="#06B6D4"/>
+  </svg>
+</button>
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
               <button v-if="auth.isAdmin" class="btn-icon" @click.stop="openModal(proj)" title="Modifier">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M15.502 1.94a.5.5 0 010 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 01.707 0l1.293 1.293zm-1.75 2.456l-2-2L4.939 9.21a.5.5 0 00-.121.196l-.805 2.414a.25.25 0 00.316.316l2.414-.805a.5.5 0 00.196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 002.5 15h11a1.5 1.5 0 001.5-1.5v-6a.5.5 0 00-1 0v6a.5.5 0 01-.5.5h-11a.5.5 0 01-.5-.5v-11a.5.5 0 01.5-.5H9a.5.5 0 000-1H2.5A1.5 1.5 0 001 2.5v11z"/></svg>
               </button>
@@ -106,7 +122,16 @@
         </div>
       </div>
     </div>
+<<<<<<< HEAD
 
+=======
+                   <!-- ═══ Modal Résumé IA — AJOUTE ICI ═══ -->
+    <ProjectSummaryModal
+      :is-open="summaryModalOpen"
+      :project="selectedProject"
+      @close="summaryModalOpen = false"
+    />
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
     <!-- ═══ Modal ═══ -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal-box">
@@ -115,7 +140,15 @@
           <button class="btn-icon" @click="closeModal">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z"/></svg>
           </button>
+<<<<<<< HEAD
         </div>
+=======
+
+ 
+  
+        </div>
+ 
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 
         <div class="modal-body">
           <div class="form-group">
@@ -194,6 +227,18 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useProjectsStore } from '../stores/projects.js'
 import { useVoiceCommand } from '../composables/useVoiceCommand.js'
+<<<<<<< HEAD
+=======
+import ProjectSummaryModal from '../components/ProjectSummaryModal.vue'
+
+const summaryModalOpen = ref(false)
+const selectedProject  = ref(null)
+
+function openSummary(proj) {
+  selectedProject.value = proj
+  summaryModalOpen.value = true
+}
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 
 const auth          = useAuthStore()
 const projectsStore = useProjectsStore()

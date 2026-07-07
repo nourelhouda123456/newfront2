@@ -7,6 +7,7 @@
       </div>
 
       <div class="vp-body">
+<<<<<<< HEAD
         <div class="vp-status" :class="{ listening: isListening }">
           <div class="vp-mic" @click="toggleListening">
              <span v-if="isListening">🔴</span>
@@ -38,6 +39,83 @@
           <span v-if="isSaving">Traitement IA...</span>
           <span v-else>Exécuter</span>
         </button>
+=======
+        <!-- ── Mode normal : micro + transcription (avant exécution) ────────── -->
+        <template v-if="!summaryResult">
+          <div class="vp-status" :class="{ listening: isListening }">
+            <div class="vp-mic" @click="toggleListening">
+               <span v-if="isListening">🔴</span>
+               <span v-else>🎤</span>
+            </div>
+            <p>{{ isListening ? 'Écoute en cours...' : 'Microphone en pause' }}</p>
+          </div>
+          
+          <div class="vp-instructions">
+            Dites ce que vous souhaitez faire.
+          </div>
+
+          <div class="vp-transcript">
+            <label>Texte transcrit (modifiable) :</label>
+            <textarea 
+              v-model="editableTranscript" 
+              rows="4" 
+              placeholder="Le texte transcrit apparaîtra ici..." 
+              class="vp-input transcript-box"
+            ></textarea>
+            <p class="interim-text" v-if="interimTranscript">{{ interimTranscript }}</p>
+          </div>
+        </template>
+
+        <!-- ── Mode résumé : affichage du résumé IA + lecture vocale ────────── -->
+        <template v-else>
+          <div class="vpr-header">
+            <h3>📊 Résumé — {{ summaryResult.projectName }}</h3>
+            <button
+              class="btn-speaker"
+              :class="{ speaking: isSpeaking }"
+              @click="toggleSpeak"
+              :title="isSpeaking ? 'Arrêter la lecture' : 'Écouter le résumé'"
+            >
+              {{ isSpeaking ? '⏹️' : '🔊' }}
+            </button>
+          </div>
+
+          <div v-if="summaryResult.stats" class="vpr-stats">
+            <div class="stat-pill">
+              <span class="stat-num">{{ summaryResult.stats.completionRate }}%</span>
+              <span class="stat-label">Complété</span>
+            </div>
+            <div class="stat-pill" :class="{ warn: summaryResult.stats.blockedCount > 0 }">
+              <span class="stat-num">{{ summaryResult.stats.blockedCount }}</span>
+              <span class="stat-label">Bloquées</span>
+            </div>
+            <div class="stat-pill" :class="{ danger: summaryResult.stats.overdueCount > 0 }">
+              <span class="stat-num">{{ summaryResult.stats.overdueCount }}</span>
+              <span class="stat-label">En retard</span>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-num">{{ summaryResult.stats.total }}</span>
+              <span class="stat-label">Total tâches</span>
+            </div>
+          </div>
+
+          <p class="vpr-text">{{ summaryResult.summary }}</p>
+        </template>
+      </div>
+
+      <div class="vp-footer">
+        <template v-if="summaryResult">
+          <button class="btn btn-ghost" @click="closePrompt">Fermer</button>
+          <button class="btn btn-primary" @click="askAgain">🎤 Nouvelle demande</button>
+        </template>
+        <template v-else>
+          <button class="btn btn-ghost" @click="closePrompt" :disabled="isSaving">Annuler</button>
+          <button class="btn btn-primary" @click="confirmCreation" :disabled="!isReadyToSubmit || isSaving">
+            <span v-if="isSaving">Traitement</span>
+            <span v-else>Exécuter</span>
+          </button>
+        </template>
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
       </div>
 
       <!-- Toast -->
@@ -51,7 +129,11 @@
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { ref, reactive, watch, computed } from 'vue'
+=======
+import { ref, reactive, watch, computed, onUnmounted } from 'vue'
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 import { voicePromptState } from '../composables/voicePromptState.js'
 import { useVoiceDictation } from '../composables/useVoiceDictation.js'
 import { useProjectsStore } from '../stores/projects.js'
@@ -78,6 +160,54 @@ const isSaving = ref(false)
 const toast = reactive({ show: false, msg: '', type: 'success' })
 let toastTimer = null
 
+<<<<<<< HEAD
+=======
+// ── Résumé IA + synthèse vocale ─────────────────────────────────────────
+const summaryResult = ref(null) // { projectName, summary, stats }
+const isSpeaking = ref(false)
+let utterance = null
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) {
+    showToast('La synthèse vocale n\'est pas supportée par ce navigateur.', 'error')
+    return
+  }
+  window.speechSynthesis.cancel()
+  utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = 'fr-FR'
+  utterance.rate = 1
+  utterance.onstart = () => { isSpeaking.value = true }
+  utterance.onend = () => { isSpeaking.value = false }
+  utterance.onerror = () => { isSpeaking.value = false }
+  window.speechSynthesis.speak(utterance)
+}
+
+function stopSpeaking() {
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+  isSpeaking.value = false
+}
+
+function toggleSpeak() {
+  if (isSpeaking.value) {
+    stopSpeaking()
+  } else if (summaryResult.value) {
+    speak(summaryResult.value.summary)
+  }
+}
+
+function askAgain() {
+  summaryResult.value = null
+  stopSpeaking()
+  resetTranscripts()
+  editableTranscript.value = ''
+  try {
+    startListening()
+  } catch (e) {
+    showToast('Impossible de démarrer le micro.', 'error')
+  }
+}
+
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 function showToast(msg, type = 'success') {
   clearTimeout(toastTimer)
   Object.assign(toast, { show: true, msg, type })
@@ -107,6 +237,10 @@ watch(() => voicePromptState.isOpen, (newVal) => {
     }
   } else {
     stopListening()
+<<<<<<< HEAD
+=======
+    stopSpeaking()
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
   }
 })
 
@@ -114,10 +248,19 @@ function resetPrompt() {
   resetTranscripts()
   editableTranscript.value = ''
   isSaving.value = false
+<<<<<<< HEAD
+=======
+  summaryResult.value = null
+  stopSpeaking()
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 }
 
 function closePrompt() {
   if (!isSaving.value) {
+<<<<<<< HEAD
+=======
+    stopSpeaking()
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
     voicePromptState.close()
   }
 }
@@ -131,6 +274,11 @@ async function confirmCreation() {
 
   isSaving.value = true
   stopListening()
+<<<<<<< HEAD
+=======
+  summaryResult.value = null
+  stopSpeaking()
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 
   try {
     const res = await fetch('http://localhost:3000/api/ai/execute', {
@@ -148,6 +296,22 @@ async function confirmCreation() {
       throw new Error(data.message || 'Erreur lors du traitement par l\'IA')
     }
 
+<<<<<<< HEAD
+=======
+    // ── Cas particulier : résumé de projet ────────────────────────────
+    // On l'affiche dans le modal + on le lit à voix haute, sans naviguer
+    // ni rafraîchir les stores (ce n'est pas une action de modification).
+    if (data.action === 'get_project_summary') {
+      summaryResult.value = {
+        projectName: data.data?.projectName || '',
+        summary: data.message,
+        stats: data.data?.stats || null,
+      }
+      // La lecture ne démarre plus automatiquement : l'utilisateur clique sur 🔊 pour l'écouter.
+      return
+    }
+
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
     showToast(data.message || 'Action exécutée avec succès', 'success')
     
     // Refresh stores depending on action or just refresh both to be safe
@@ -171,6 +335,13 @@ async function confirmCreation() {
     isSaving.value = false
   }
 }
+<<<<<<< HEAD
+=======
+
+onUnmounted(() => {
+  stopSpeaking()
+})
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 </script>
 
 <style scoped>
@@ -203,6 +374,11 @@ async function confirmCreation() {
 .vp-body {
   padding: 20px;
   display: flex; flex-direction: column; gap: 20px;
+<<<<<<< HEAD
+=======
+  max-height: 60vh;
+  overflow-y: auto;
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 }
 
 .vp-status {
@@ -257,6 +433,52 @@ async function confirmCreation() {
   box-sizing: border-box;
 }
 
+<<<<<<< HEAD
+=======
+/* ── Résumé IA (mode résultat) ──────────────────────────────────────── */
+.vpr-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.vpr-header h3 {
+  font-size: 15px; font-weight: 700; color: #172B4D; margin: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.btn-speaker {
+  flex-shrink: 0;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #E6F0FF; border: 2px solid transparent;
+  font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.btn-speaker:hover { background: #D6E6FF; }
+.btn-speaker.speaking {
+  background: #FFEBE6; border-color: #FF5630;
+  animation: pulse-anim 1.2s infinite alternate;
+}
+
+.vpr-stats { display: flex; gap: 8px; flex-wrap: wrap; }
+.vpr-stats .stat-pill {
+  flex: 1; min-width: 70px; background: #F4F5F7;
+  border-radius: 8px; padding: 8px; display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+}
+.vpr-stats .stat-pill.warn { background: #FFF7E6; }
+.vpr-stats .stat-pill.danger { background: #FFEBE6; }
+.vpr-stats .stat-num { font-size: 16px; font-weight: 700; color: #172B4D; }
+.vpr-stats .stat-label { font-size: 10px; color: #7A869A; font-weight: 600; text-align: center; }
+
+.vpr-text {
+  background: #F4F5F7;
+  border-left: 4px solid #0052CC;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 13.5px; line-height: 1.55; color: #172B4D;
+  margin: 0;
+  white-space: pre-line;
+}
+
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 .vp-footer {
   padding: 16px 20px; border-top: 1px solid #EBECF0;
   display: flex; justify-content: flex-end; gap: 10px; background: #FAFBFC;
@@ -277,4 +499,8 @@ async function confirmCreation() {
 .toast.error { background: #DE350B; }
 .toast-enter-active, .toast-leave-active { transition: all .3s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translate(-50%, 10px); }
+<<<<<<< HEAD
 </style>
+=======
+</style>
+>>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
