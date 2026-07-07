@@ -71,13 +71,8 @@
                   <span v-if="n.type === 'COMMENT'">💬</span>
                   <span v-else-if="n.type === 'REOPEN_REQUEST'">🔄</span>
                   <span v-else-if="n.type === 'DEADLINE_ALERT'">⏰</span>
-<<<<<<< HEAD
                   <span v-else-if="n.type === 'APPROVE'">✅</span>
                   <span v-else-if="n.type === 'IGNORE'">❌</span>
-=======
-                  <span v-else-if="n.type === 'app'">⏰</span>
-
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
                   <span v-else>🔔</span>
                 </div>
                 <div class="notif-content">
@@ -97,7 +92,6 @@
                     <!-- Demande de réouverture : Approuver ou Ignorer -->
                     <template v-else-if="n.type === 'REOPEN_REQUEST'">
                       <button class="btn btn-success btn-sm" @click="approveNotif(n.id || n._id)">✔ Approuver</button>
-<<<<<<< HEAD
                       <button class="btn btn-ghost btn-sm" @click="ignoreNotif(n.id || n._id)">Ignorer</button>
                     </template>
 
@@ -109,9 +103,6 @@
                         @click="openTask(n); notifOpen = false"
                       >Voir la tâche</button>
                       <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Marquer lu</button>
-=======
-                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Ignorer</button>
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
                     </template>
 
                     <!-- Alerte deadline -->
@@ -191,8 +182,7 @@ const notifOpen = ref(false)
 onMounted(() => {
   if (auth.currentUser) {
     notifsStore.fetchNotifications()
-    // Rafraîchir toutes les 30 secondes
-    setInterval(() => notifsStore.fetchNotifications(), 30000)
+    notifsStore.initFCM()
   }
 })
 
@@ -200,11 +190,8 @@ function notifTypeClass(type) {
   if (type === 'COMMENT')       return 'notif-comment'
   if (type === 'REOPEN_REQUEST') return 'notif-reopen'
   if (type === 'DEADLINE_ALERT') return 'notif-deadline'
-<<<<<<< HEAD
   if (type === 'APPROVE')        return 'notif-approve'
   if (type === 'IGNORE')         return 'notif-ignore'
-=======
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
   return ''
 }
 
@@ -230,7 +217,6 @@ async function approveNotif(id) {
   }
 }
 
-<<<<<<< HEAD
 async function ignoreNotif(id) {
   try {
     await notifsStore.ignoreReopen(id)
@@ -239,8 +225,6 @@ async function ignoreNotif(id) {
   }
 }
 
-=======
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 const initials = computed(() => {
   const n = auth.currentUser?.name || ''
   return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -427,11 +411,8 @@ async function logout() {
 .notif-item.notif-comment  { border-left: 3px solid #0052CC; }
 .notif-item.notif-reopen   { border-left: 3px solid #FF991F; }
 .notif-item.notif-deadline { border-left: 3px solid #DE350B; }
-<<<<<<< HEAD
 .notif-item.notif-approve  { border-left: 3px solid #36B37E; }
 .notif-item.notif-ignore   { border-left: 3px solid #DE350B; }
-=======
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 
 .notif-type-badge {
   font-size: 18px; flex-shrink: 0; margin-top: 1px;

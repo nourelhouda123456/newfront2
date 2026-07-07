@@ -6,9 +6,10 @@
     "build": "vite build"
   },
   "dependencies": {
+    "firebase": "^12.15.0",
+    "pinia": "^2.1.0",
     "vue": "^3.4.0",
-    "vue-router": "^4.3.0",
-    "pinia": "^2.1.0"
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

@@ -55,7 +55,7 @@ export const useTasksStore = defineStore('tasks', () => {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message)
-    const idx = tasks.value.findIndex(t => t._id === id)
+    const idx = tasks.value.findIndex(t => (t._id || t.id) === id)
     if (idx !== -1) tasks.value[idx] = data.task
     return data.task
   }
@@ -70,7 +70,7 @@ export const useTasksStore = defineStore('tasks', () => {
       const data = await res.json()
       throw new Error(data.message)
     }
-    tasks.value = tasks.value.filter(t => t._id !== id)
+    tasks.value = tasks.value.filter(t => (t._id || t.id) !== id)
   }
 
   // ── COMMENTS ──────────────────────────────────────────────────

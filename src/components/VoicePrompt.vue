@@ -7,39 +7,6 @@
       </div>
 
       <div class="vp-body">
-<<<<<<< HEAD
-        <div class="vp-status" :class="{ listening: isListening }">
-          <div class="vp-mic" @click="toggleListening">
-             <span v-if="isListening">🔴</span>
-             <span v-else>🎤</span>
-          </div>
-          <p>{{ isListening ? 'Écoute en cours...' : 'Microphone en pause' }}</p>
-        </div>
-        
-        <div class="vp-instructions">
-          Dites ce que vous souhaitez faire.
-        </div>
-
-        <div class="vp-transcript">
-          <label>Texte transcrit (modifiable) :</label>
-          <textarea 
-            v-model="editableTranscript" 
-            rows="4" 
-            placeholder="Le texte transcrit apparaîtra ici..." 
-            class="vp-input transcript-box"
-          ></textarea>
-          <p class="interim-text" v-if="interimTranscript">{{ interimTranscript }}</p>
-        </div>
-
-      </div>
-
-      <div class="vp-footer">
-        <button class="btn btn-ghost" @click="closePrompt" :disabled="isSaving">Annuler</button>
-        <button class="btn btn-primary" @click="confirmCreation" :disabled="!isReadyToSubmit || isSaving">
-          <span v-if="isSaving">Traitement IA...</span>
-          <span v-else>Exécuter</span>
-        </button>
-=======
         <!-- ── Mode normal : micro + transcription (avant exécution) ────────── -->
         <template v-if="!summaryResult">
           <div class="vp-status" :class="{ listening: isListening }">
@@ -115,7 +82,6 @@
             <span v-else>Exécuter</span>
           </button>
         </template>
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
       </div>
 
       <!-- Toast -->
@@ -129,11 +95,7 @@
 </template>
 
 <script setup>
-<<<<<<< HEAD
-import { ref, reactive, watch, computed } from 'vue'
-=======
 import { ref, reactive, watch, computed, onUnmounted } from 'vue'
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 import { voicePromptState } from '../composables/voicePromptState.js'
 import { useVoiceDictation } from '../composables/useVoiceDictation.js'
 import { useProjectsStore } from '../stores/projects.js'
@@ -160,8 +122,6 @@ const isSaving = ref(false)
 const toast = reactive({ show: false, msg: '', type: 'success' })
 let toastTimer = null
 
-<<<<<<< HEAD
-=======
 // ── Résumé IA + synthèse vocale ─────────────────────────────────────────
 const summaryResult = ref(null) // { projectName, summary, stats }
 const isSpeaking = ref(false)
@@ -207,7 +167,6 @@ function askAgain() {
   }
 }
 
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 function showToast(msg, type = 'success') {
   clearTimeout(toastTimer)
   Object.assign(toast, { show: true, msg, type })
@@ -237,10 +196,7 @@ watch(() => voicePromptState.isOpen, (newVal) => {
     }
   } else {
     stopListening()
-<<<<<<< HEAD
-=======
     stopSpeaking()
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
   }
 })
 
@@ -248,19 +204,13 @@ function resetPrompt() {
   resetTranscripts()
   editableTranscript.value = ''
   isSaving.value = false
-<<<<<<< HEAD
-=======
   summaryResult.value = null
   stopSpeaking()
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 }
 
 function closePrompt() {
   if (!isSaving.value) {
-<<<<<<< HEAD
-=======
     stopSpeaking()
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
     voicePromptState.close()
   }
 }
@@ -274,11 +224,8 @@ async function confirmCreation() {
 
   isSaving.value = true
   stopListening()
-<<<<<<< HEAD
-=======
   summaryResult.value = null
   stopSpeaking()
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 
   try {
     const res = await fetch('http://localhost:3000/api/ai/execute', {
@@ -296,8 +243,6 @@ async function confirmCreation() {
       throw new Error(data.message || 'Erreur lors du traitement par l\'IA')
     }
 
-<<<<<<< HEAD
-=======
     // ── Cas particulier : résumé de projet ────────────────────────────
     // On l'affiche dans le modal + on le lit à voix haute, sans naviguer
     // ni rafraîchir les stores (ce n'est pas une action de modification).
@@ -311,7 +256,6 @@ async function confirmCreation() {
       return
     }
 
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
     showToast(data.message || 'Action exécutée avec succès', 'success')
     
     // Refresh stores depending on action or just refresh both to be safe
@@ -335,13 +279,10 @@ async function confirmCreation() {
     isSaving.value = false
   }
 }
-<<<<<<< HEAD
-=======
 
 onUnmounted(() => {
   stopSpeaking()
 })
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 </script>
 
 <style scoped>
@@ -374,11 +315,8 @@ onUnmounted(() => {
 .vp-body {
   padding: 20px;
   display: flex; flex-direction: column; gap: 20px;
-<<<<<<< HEAD
-=======
   max-height: 60vh;
   overflow-y: auto;
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 }
 
 .vp-status {
@@ -433,8 +371,6 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
-<<<<<<< HEAD
-=======
 /* ── Résumé IA (mode résultat) ──────────────────────────────────────── */
 .vpr-header {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -478,7 +414,6 @@ onUnmounted(() => {
   white-space: pre-line;
 }
 
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
 .vp-footer {
   padding: 16px 20px; border-top: 1px solid #EBECF0;
   display: flex; justify-content: flex-end; gap: 10px; background: #FAFBFC;
@@ -499,8 +434,4 @@ onUnmounted(() => {
 .toast.error { background: #DE350B; }
 .toast-enter-active, .toast-leave-active { transition: all .3s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translate(-50%, 10px); }
-<<<<<<< HEAD
 </style>
-=======
-</style>
->>>>>>> bf3959f178769e4009561dd13ab95d423f3f71a5
