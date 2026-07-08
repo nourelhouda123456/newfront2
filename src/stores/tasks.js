@@ -99,6 +99,29 @@ export const useTasksStore = defineStore('tasks', () => {
     return data.task
   }
 
+  // ── DEMANDES DE RÉOUVERTURE (admin) ──────────────────────────────
+  async function approveReopen(taskId) {
+    const res = await fetch(`${API}/tasks/${taskId}/approve-reopen`, {
+      method:  'POST',
+      headers: headers(),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message)
+    const idx = tasks.value.findIndex(t => (t._id || t.id) === taskId)
+    if (idx !== -1) tasks.value[idx] = data.task
+    return data.task
+  }
+
+  async function ignoreReopen(taskId) {
+    const res = await fetch(`${API}/tasks/${taskId}/ignore-reopen`, {
+      method:  'POST',
+      headers: headers(),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message)
+    return data
+  }
+
   // ── STATS ─────────────────────────────────────────────────────
   function getStats() {
     return {
@@ -110,5 +133,8 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  return { tasks, loading, error, fetchTasks, addTask, updateTask, deleteTask, addComment, deleteComment, getStats }
+  return {
+    tasks, loading, error, fetchTasks, addTask, updateTask, deleteTask,
+    addComment, deleteComment, approveReopen, ignoreReopen, getStats
+  }
 })

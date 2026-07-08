@@ -62,6 +62,10 @@
               <h4>Notifications</h4>
               <button class="btn-icon" @click="notifOpen = false">✕</button>
             </div>
+            <div v-if="notifsStore.permissionState === 'denied'" class="notif-permission-banner">
+              🔕 Les notifications sont bloquées pour ce site. Vous ne recevrez aucune alerte tant qu'elles ne
+              sont pas réactivées : cliquez sur l'icône à côté de l'URL → Autorisations du site → Notifications.
+            </div>
             <div class="notif-body">
               <div v-if="notifsStore.notifications.length === 0" class="notif-empty">
                 Aucune notification.
@@ -86,13 +90,12 @@
                         class="btn btn-primary btn-sm"
                         @click="openTask(n); notifOpen = false"
                       >Voir la tâche</button>
-                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Marquer lu</button>
-                    </template>
+<button class="btn btn-ghost btn-sm" @click="notifsStore.dismiss(n.id)">Marquer lu</button>                    </template>
 
                     <!-- Demande de réouverture : Approuver ou Ignorer -->
                     <template v-else-if="n.type === 'REOPEN_REQUEST'">
-                      <button class="btn btn-success btn-sm" @click="approveNotif(n.id || n._id)">✔ Approuver</button>
-                      <button class="btn btn-ghost btn-sm" @click="ignoreNotif(n.id || n._id)">Ignorer</button>
+<button class="btn btn-success btn-sm" @click="approveNotif(n)">✔ Approuver</button>
+<button class="btn btn-ghost btn-sm" @click="ignoreNotif(n)">Ignorer</button>
                     </template>
 
                     <!-- Réponses à la demande de réouverture -->
@@ -102,8 +105,7 @@
                         class="btn btn-primary btn-sm"
                         @click="openTask(n); notifOpen = false"
                       >Voir la tâche</button>
-                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Marquer lu</button>
-                    </template>
+<button class="btn btn-ghost btn-sm" @click="notifsStore.dismiss(n.id)">Marquer lu</button>                    </template>
 
                     <!-- Alerte deadline -->
                     <template v-else-if="n.type === 'DEADLINE_ALERT'">
@@ -112,13 +114,11 @@
                         class="btn btn-warning btn-sm"
                         @click="$router.push('/projects'); notifOpen = false"
                       >Voir le projet</button>
-                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">OK</button>
-                    </template>
+<button class="btn btn-ghost btn-sm" @click="notifsStore.dismiss(n.id)">OK</button>                    </template>
 
                     <!-- Autres (INFO) -->
                     <template v-else>
-                      <button class="btn btn-ghost btn-sm" @click="notifsStore.markAsRead(n.id || n._id)">Marquer lu</button>
-                    </template>
+<button class="btn btn-ghost btn-sm" @click="notifsStore.dismiss(n.id)">Marquer lu</button>                    </template>
                   </div>
                 </div>
               </div>
@@ -171,20 +171,26 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useNotificationsStore } from '../stores/notifications.js'
+import { useTasksStore } from '../stores/tasks.js'
 import { voicePromptState } from '../composables/voicePromptState.js'
 
 const auth = useAuthStore()
 const notifsStore = useNotificationsStore()
+const tasksStore = useTasksStore()
 const router = useRouter()
 const mobileOpen = ref(false)
 const notifOpen = ref(false)
 
 onMounted(() => {
   if (auth.currentUser) {
-    notifsStore.fetchNotifications()
     notifsStore.initFCM()
   }
 })
+
+async function logout() {
+  await auth.logout()
+  router.push('/login')
+}
 
 function notifTypeClass(type) {
   if (type === 'COMMENT')       return 'notif-comment'
@@ -202,24 +208,25 @@ function formatDate(dateStr) {
 }
 
 function openTask(notif) {
-  const taskId = notif.task?.id || notif.task?._id || notif.task
-  if (taskId) {
-    router.push(`/tasks?openTask=${taskId}`)
-    notifsStore.markAsRead(notif.id || notif._id)
+  if (notif.task) {
+    router.push(`/tasks?openTask=${notif.task}`)
+    notifsStore.dismiss(notif.id)
   }
 }
 
-async function approveNotif(id) {
+async function approveNotif(notif) {
   try {
-    await notifsStore.approveReopen(id)
+    await tasksStore.approveReopen(notif.task)
+    notifsStore.dismiss(notif.id)
   } catch (e) {
     console.error(e)
   }
 }
 
-async function ignoreNotif(id) {
+async function ignoreNotif(notif) {
   try {
-    await notifsStore.ignoreReopen(id)
+    await tasksStore.ignoreReopen(notif.task)
+    notifsStore.dismiss(notif.id)
   } catch (e) {
     console.error(e)
   }
@@ -229,11 +236,6 @@ const initials = computed(() => {
   const n = auth.currentUser?.name || ''
   return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 })
-
-async function logout() {
-  await auth.logout()
-  router.push('/login')
-}
 </script>
 
 <style scoped>
@@ -393,6 +395,14 @@ async function logout() {
   padding: 12px 14px; background: #F4F5F7; border-bottom: 1px solid #EBECF0;
 }
 .notif-header h4 { margin: 0; font-size: 14px; color: #172B4D; font-weight: 700; }
+.notif-permission-banner {
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #7A4A00;
+  background: #FFF7E6;
+  border-bottom: 1px solid #FFE7A0;
+}
 .notif-body {
   max-height: 380px; overflow-y: auto;
 }

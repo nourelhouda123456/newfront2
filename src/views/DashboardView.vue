@@ -194,10 +194,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useTasksStore } from '../stores/tasks.js'
- 
+import ProjectSummaryModal from '../components/ProjectSummaryModal.vue'
 
 const auth  = useAuthStore()
 const tasks = useTasksStore()
+
+// État de la modale de résumé de projet (actuellement non déclenchée depuis
+// ce dashboard — aucune liste de projets n'y ouvre la modale pour l'instant)
+const summaryModalOpen = ref(false)
+const selectedProject  = ref(null)
 
  
  
